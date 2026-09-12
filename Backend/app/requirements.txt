@@ -1,0 +1,28 @@
+# ============================================================
+# KALASETU BACKEND DEPENDENCIES
+# ============================================================
+
+# FastAPI framework
+fastapi
+
+# ASGI server for FastAPI
+uvicorn[standard]
+
+# PostgreSQL database driver
+psycopg[binary]
+
+# SQLAlchemy ORM
+sqlalchemy
+
+# Environment variables
+python-dotenv
+
+# ============================================================
+# AUTHENTICATION
+# ============================================================
+
+# JWT creation and verification
+python-jose[cryptography]
+
+# Password hashing
+passlib[bcrypt]
