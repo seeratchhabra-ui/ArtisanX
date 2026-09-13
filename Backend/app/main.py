@@ -1,42 +1,11 @@
 # ============================================================
 # KALASETU - FASTAPI MAIN APPLICATION
 # ============================================================
-#
-# CURRENTLY ADDED:
-# ✅ FastAPI
-# ✅ PostgreSQL
-# ✅ SQLAlchemy
-# ✅ Heritage Site API
-# ✅ User API
-# ✅ Product API
-# ✅ Order API
-# ✅ Database health check
-# ✅ Authentication
-# ✅ JWT
-# ✅ OTP
-#
-# NOT ADDED:
-# ❌ AI/ML
-# ❌ Gemini
-# ❌ Bhashini
-# ❌ Flutter
-# ❌ Role-based authorization
-# ❌ Refresh tokens
-#
-# ============================================================
-
-
-# ============================================================
-# IMPORTS
-# ============================================================
 
 from fastapi import FastAPI
-
 from sqlalchemy import text
 
 from .database import Base, engine, SessionLocal
-
-# Import models so SQLAlchemy knows about all tables
 from . import models
 
 # Authentication router
@@ -63,12 +32,6 @@ app = FastAPI(
 # ============================================================
 # CREATE DATABASE TABLES
 # ============================================================
-#
-# This creates tables that do not already exist.
-#
-# Existing tables are NOT deleted.
-#
-# ============================================================
 
 Base.metadata.create_all(
     bind=engine
@@ -81,7 +44,6 @@ Base.metadata.create_all(
 
 @app.get("/")
 def root():
-
     return {
         "message": "Welcome to KalaSetu API",
         "status": "running"
@@ -94,7 +56,6 @@ def root():
 
 @app.get("/health")
 def health_check():
-
     return {
         "status": "healthy"
     }
@@ -103,21 +64,13 @@ def health_check():
 # ============================================================
 # DATABASE HEALTH CHECK
 # ============================================================
-#
-# This specifically verifies:
-#
-# FastAPI → PostgreSQL
-#
-# ============================================================
 
 @app.get("/health/db")
 def database_health_check():
 
     try:
-
         db = SessionLocal()
 
-        # Simple PostgreSQL query
         db.execute(
             text("SELECT 1")
         )
@@ -166,7 +119,8 @@ app.include_router(
 
 # Authentication API
 app.include_router(
-    auth.router
+    auth.router,
+    prefix=""
 )
 
 
