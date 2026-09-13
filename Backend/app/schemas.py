@@ -1,23 +1,10 @@
 # ============================================================
 # KALASETU - API SCHEMAS
 # ============================================================
-#
-# CURRENTLY ADDED:
-# ✅ Heritage Site schemas
-# ✅ User schemas
-# ✅ Product schemas
-# ✅ Order schemas
-#
-# NOT ADDED:
-# ❌ Authentication schemas
-# ❌ JWT schemas
-# ❌ OTP schemas
-# ❌ AI schemas
-#
-# ============================================================
 
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -50,6 +37,15 @@ class HeritageSiteResponse(BaseModel):
 
 
 # ============================================================
+# USER ROLES
+# ============================================================
+
+class RegistrationRole(str, Enum):
+    CUSTOMER = "customer"
+    ARTISAN = "artisan"
+
+
+# ============================================================
 # USER
 # ============================================================
 
@@ -58,7 +54,7 @@ class UserCreate(BaseModel):
     name: str
     email: str
     phone: str | None = None
-    role: str = "user"
+    role: RegistrationRole = RegistrationRole.CUSTOMER
 
 
 class UserUpdate(BaseModel):

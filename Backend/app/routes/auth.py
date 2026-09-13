@@ -51,6 +51,8 @@ def register_user(
 ):
     """
     Register a new KalaSetu user.
+    Normal registration allows only CUSTOMER or ARTISAN.
+    ADMIN cannot be selected during registration.
     """
 
     # Check email
@@ -85,7 +87,7 @@ def register_user(
         name=user_data.name,
         email=user_data.email,
         phone=user_data.phone,
-        role=user_data.role,
+        role=user_data.role.value,
     )
 
     db.add(new_user)
