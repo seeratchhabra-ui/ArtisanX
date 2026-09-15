@@ -26,3 +26,6 @@ python-jose[cryptography]
 
 # Password hashing
 passlib[bcrypt]
+
+# File upload support
+python-multipart

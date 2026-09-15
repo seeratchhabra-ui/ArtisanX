@@ -12,7 +12,8 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Numeric,
-    DateTime
+    DateTime,
+    Boolean
 )
 
 from sqlalchemy.orm import relationship
@@ -255,9 +256,112 @@ class Product(Base):
         back_populates="product"
     )
 
+    media = relationship(
+        "ProductMedia",
+        back_populates="product",
+        cascade="all, delete-orphan"
+    )
+
 
 # ============================================================
-# 5. ORDER MODEL
+# 5. PRODUCT MEDIA
+# ============================================================
+
+class ProductMedia(Base):
+
+    __tablename__ = "product_media"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    product_id = Column(
+        Integer,
+        ForeignKey("products.id"),
+        nullable=False,
+        index=True
+    )
+
+    # Original uploaded filename
+    original_filename = Column(
+        String(255),
+        nullable=False
+    )
+
+    # UUID-based stored filename
+    stored_filename = Column(
+        String(255),
+        nullable=False,
+        unique=True
+    )
+
+    # Path used by the backend/storage system
+    file_path = Column(
+        String(500),
+        nullable=False
+    )
+
+    # image / video
+    media_type = Column(
+        String(20),
+        nullable=False
+    )
+
+    # image/jpeg, image/png, video/mp4, etc.
+    mime_type = Column(
+        String(100),
+        nullable=False
+    )
+
+    # File size in bytes
+    file_size = Column(
+        Integer,
+        nullable=False
+    )
+
+    # Order in which media should be displayed
+    display_order = Column(
+        Integer,
+        default=0,
+        nullable=False
+    )
+
+    # Main product image
+    is_primary = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    # Reserved for future AI pipeline
+    ai_status = Column(
+        String(30),
+        default="pending",
+        nullable=False
+    )
+
+    # Future AI-generated/processed media
+    processed_file_path = Column(
+        String(500),
+        nullable=True
+    )
+
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False
+    )
+
+    product = relationship(
+        "Product",
+        back_populates="media"
+    )
+
+
+# ============================================================
+# 6. ORDER MODEL
 # ============================================================
 
 class Order(Base):

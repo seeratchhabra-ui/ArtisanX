@@ -125,7 +125,6 @@ class ProductCreate(BaseModel):
     category: str | None = None
     stock: int = 0
     state: str | None = None
-    seller_id: int
 
 
 class ProductUpdate(BaseModel):
