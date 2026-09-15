@@ -4,6 +4,8 @@
 
 from fastapi import FastAPI
 from sqlalchemy import text
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 
 from .database import Base, engine, SessionLocal
 from . import models
@@ -12,6 +14,7 @@ from . import models
 from .routes import auth
 
 # Other API routers
+from .routes.media import router as media_router
 from .routes.heritage import router as heritage_router
 from .routes.users import router as users_router
 from .routes.products import router as products_router
@@ -29,6 +32,27 @@ app = FastAPI(
     title="KalaSetu API",
     description="Backend API for the KalaSetu cultural heritage platform",
     version="0.3.0"
+)
+
+
+# ============================================================
+# PRODUCT MEDIA STORAGE
+# ============================================================
+
+UPLOAD_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "uploads"
+)
+
+UPLOAD_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=UPLOAD_DIR),
+    name="uploads"
 )
 
 
@@ -113,6 +137,11 @@ app.include_router(
 # Product API
 app.include_router(
     products_router
+)
+
+# Product Media API
+app.include_router(
+    media_router
 )
 
 # Order API
