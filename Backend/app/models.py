@@ -117,9 +117,85 @@ class User(Base):
         back_populates="user"
     )
 
+    # One user can have one artisan profile
+    artisan_profile = relationship(
+        "ArtisanProfile",
+        back_populates="user",
+        uselist=False
+    )
+
 
 # ============================================================
-# 3. PRODUCT MODEL
+# 3. ARTISAN PROFILE MODEL
+# ============================================================
+
+class ArtisanProfile(Base):
+
+    __tablename__ = "artisan_profiles"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    # Connect artisan profile to the existing User
+    user_id = Column(
+        Integer,
+        ForeignKey("users.id"),
+        unique=True,
+        nullable=False
+    )
+
+    full_name = Column(
+        String(150),
+        nullable=False
+    )
+
+    bio = Column(
+        Text,
+        nullable=True
+    )
+
+    craft_type = Column(
+        String(100),
+        nullable=False
+    )
+
+    experience_years = Column(
+        Integer,
+        nullable=True
+    )
+
+    state = Column(
+        String(100),
+        nullable=True
+    )
+
+    district = Column(
+        String(100),
+        nullable=True
+    )
+
+    village = Column(
+        String(100),
+        nullable=True
+    )
+
+    profile_image = Column(
+        String(500),
+        nullable=True
+    )
+
+    # Relationship back to User
+    user = relationship(
+        "User",
+        back_populates="artisan_profile"
+    )
+
+
+# ============================================================
+# 4. PRODUCT MODEL
 # ============================================================
 
 class Product(Base):
@@ -181,7 +257,7 @@ class Product(Base):
 
 
 # ============================================================
-# 4. ORDER MODEL
+# 5. ORDER MODEL
 # ============================================================
 
 class Order(Base):

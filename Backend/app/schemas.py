@@ -4,9 +4,10 @@
 
 from datetime import datetime
 from decimal import Decimal
-from enum import Enum
 
 from pydantic import BaseModel, ConfigDict
+
+from .models import UserRole
 
 
 # ============================================================
@@ -37,15 +38,6 @@ class HeritageSiteResponse(BaseModel):
 
 
 # ============================================================
-# USER ROLES
-# ============================================================
-
-class RegistrationRole(str, Enum):
-    CUSTOMER = "customer"
-    ARTISAN = "artisan"
-
-
-# ============================================================
 # USER
 # ============================================================
 
@@ -54,7 +46,9 @@ class UserCreate(BaseModel):
     name: str
     email: str
     phone: str | None = None
-    role: RegistrationRole = RegistrationRole.CUSTOMER
+
+    # Default role is CUSTOMER
+    role: UserRole = UserRole.CUSTOMER
 
 
 class UserUpdate(BaseModel):
@@ -72,6 +66,47 @@ class UserResponse(BaseModel):
     email: str
     phone: str | None = None
     role: str
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+
+# ============================================================
+# ARTISAN PROFILE
+# ============================================================
+
+class ArtisanProfileCreate(BaseModel):
+
+    full_name: str
+    bio: str | None = None
+
+    craft_type: str
+    experience_years: int | None = None
+
+    state: str | None = None
+    district: str | None = None
+    village: str | None = None
+
+    profile_image: str | None = None
+
+
+class ArtisanProfileResponse(BaseModel):
+
+    id: int
+    user_id: int
+
+    full_name: str
+    bio: str | None = None
+
+    craft_type: str
+    experience_years: int | None = None
+
+    state: str | None = None
+    district: str | None = None
+    village: str | None = None
+
+    profile_image: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True

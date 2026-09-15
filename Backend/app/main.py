@@ -17,6 +17,9 @@ from .routes.users import router as users_router
 from .routes.products import router as products_router
 from .routes.orders import router as orders_router
 
+# Artisan router
+from .routes.artisan import router as artisan_router
+
 
 # ============================================================
 # CREATE FASTAPI APPLICATION
@@ -115,6 +118,11 @@ app.include_router(
 # Order API
 app.include_router(
     orders_router
+)
+
+# Artisan API
+app.include_router(
+    artisan_router
 )
 
 # Authentication API
