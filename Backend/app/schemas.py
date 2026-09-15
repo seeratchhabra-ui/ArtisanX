@@ -1,25 +1,13 @@
 # ============================================================
 # KALASETU - API SCHEMAS
 # ============================================================
-#
-# CURRENTLY ADDED:
-# ✅ Heritage Site schemas
-# ✅ User schemas
-# ✅ Product schemas
-# ✅ Order schemas
-#
-# NOT ADDED:
-# ❌ Authentication schemas
-# ❌ JWT schemas
-# ❌ OTP schemas
-# ❌ AI schemas
-#
-# ============================================================
 
 from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
+
+from .models import UserRole
 
 
 # ============================================================
@@ -58,7 +46,9 @@ class UserCreate(BaseModel):
     name: str
     email: str
     phone: str | None = None
-    role: str = "user"
+
+    # Default role is CUSTOMER
+    role: UserRole = UserRole.CUSTOMER
 
 
 class UserUpdate(BaseModel):
@@ -76,6 +66,47 @@ class UserResponse(BaseModel):
     email: str
     phone: str | None = None
     role: str
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
+
+
+# ============================================================
+# ARTISAN PROFILE
+# ============================================================
+
+class ArtisanProfileCreate(BaseModel):
+
+    full_name: str
+    bio: str | None = None
+
+    craft_type: str
+    experience_years: int | None = None
+
+    state: str | None = None
+    district: str | None = None
+    village: str | None = None
+
+    profile_image: str | None = None
+
+
+class ArtisanProfileResponse(BaseModel):
+
+    id: int
+    user_id: int
+
+    full_name: str
+    bio: str | None = None
+
+    craft_type: str
+    experience_years: int | None = None
+
+    state: str | None = None
+    district: str | None = None
+    village: str | None = None
+
+    profile_image: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True

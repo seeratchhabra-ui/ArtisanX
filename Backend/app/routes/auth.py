@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from ..database import get_db
-from ..models import User
+from ..models import User, UserRole
 from ..schemas import UserCreate
 from ..auth import (
     create_otp,
@@ -51,9 +51,31 @@ def register_user(
 ):
     """
     Register a new KalaSetu user.
+
+    Normal registration allows:
+    - CUSTOMER
+    - ARTISAN
+
+    ADMIN cannot register themselves.
+    Admin accounts must be created/assigned
+    through a protected administrative process.
     """
 
-    # Check email
+    # --------------------------------------------------------
+    # PREVENT SELF-REGISTRATION AS ADMIN
+    # --------------------------------------------------------
+
+    if user_data.role == UserRole.ADMIN:
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot be created through public registration"
+        )
+
+    # --------------------------------------------------------
+    # CHECK EMAIL
+    # --------------------------------------------------------
+
     existing_email = (
         db.query(User)
         .filter(User.email == user_data.email)
@@ -61,13 +83,18 @@ def register_user(
     )
 
     if existing_email:
+
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
 
-    # Check phone
+    # --------------------------------------------------------
+    # CHECK PHONE
+    # --------------------------------------------------------
+
     if user_data.phone:
+
         existing_phone = (
             db.query(User)
             .filter(User.phone == user_data.phone)
@@ -75,22 +102,32 @@ def register_user(
         )
 
         if existing_phone:
+
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Phone number already registered"
             )
 
-    # Create user
+    # --------------------------------------------------------
+    # CREATE USER
+    # --------------------------------------------------------
+
     new_user = User(
         name=user_data.name,
         email=user_data.email,
         phone=user_data.phone,
-        role=user_data.role,
+        role=user_data.role.value,
     )
 
     db.add(new_user)
+
     db.commit()
+
     db.refresh(new_user)
+
+    # --------------------------------------------------------
+    # RESPONSE
+    # --------------------------------------------------------
 
     return {
         "message": "User registered successfully",
@@ -120,6 +157,7 @@ def request_otp(
     )
 
     if not user:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User with this phone number does not exist"
@@ -147,14 +185,21 @@ def login(
     Verify OTP and generate a JWT access token.
     """
 
-    # Verify OTP
+    # --------------------------------------------------------
+    # VERIFY OTP
+    # --------------------------------------------------------
+
     if not verify_otp(data.phone, data.otp):
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired OTP"
         )
 
-    # Find user
+    # --------------------------------------------------------
+    # FIND USER
+    # --------------------------------------------------------
+
     user = (
         db.query(User)
         .filter(User.phone == data.phone)
@@ -162,12 +207,16 @@ def login(
     )
 
     if not user:
+
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 
-    # Create JWT
+    # --------------------------------------------------------
+    # CREATE JWT
+    # --------------------------------------------------------
+
     access_token = create_access_token(
         data={
             "sub": str(user.id)
