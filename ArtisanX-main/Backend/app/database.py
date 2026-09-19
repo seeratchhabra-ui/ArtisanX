@@ -1,84 +1,61 @@
 # ============================================================
 # KALASETU - DATABASE CONFIGURATION
 # ============================================================
-#
-# ADDED:
-# ✅ PostgreSQL connection
-# ✅ SQLAlchemy engine
-# ✅ Database sessions
-#
-# NOT ADDED:
-# ❌ Authentication
-# ❌ JWT
-# ❌ AI/ML
-# ❌ Gemini
-# ❌ Bhashini
-# ❌ Flutter
-#
-# ============================================================
 
 import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-
-# ============================================================
-# DATABASE URL
-# ============================================================
-#
-# Docker Compose supplies DATABASE_URL.
-#
-# When running inside Docker:
-#
-# postgres = PostgreSQL container name
-#
-# ============================================================
-
-DATABASE_URL = os.getenv(
+# 1. Base URL determination
+# In Docker Compose, DATABASE_URL is supplied via environment variables.
+# When running locally, if PostgreSQL is not available, we gracefully fallback to SQLite.
+RAW_DATABASE_URL = os.getenv(
     "DATABASE_URL",
     "postgresql+psycopg://kalasetu:kalasetu_password@localhost:5432/kalasetu_db"
 )
 
+DATABASE_URL = RAW_DATABASE_URL
+engine = None
 
-# ============================================================
-# SQLALCHEMY ENGINE
-# ============================================================
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    try:
+        engine = create_engine(
+            DATABASE_URL,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": 2} if "psycopg" in DATABASE_URL else {}
+        )
+        # Quick ping test to verify server availability
+        with engine.connect() as conn:
+            pass
+    except Exception as e:
+        # Fallback to SQLite for resilient local offline development
+        print(f"[KalaSetu DB] PostgreSQL connection to {DATABASE_URL} unavailable: {e}")
+        print("[KalaSetu DB] Falling back gracefully to local SQLite database (kalasetu.db)")
+        DATABASE_URL = "sqlite:///./kalasetu.db"
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False}
+        )
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
-
-
-# ============================================================
-# DATABASE SESSION
-# ============================================================
-
+# Database Session
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine
 )
 
-
-# ============================================================
-# BASE CLASS
-# ============================================================
-
+# Base Model Class
 Base = declarative_base()
 
-
-# ============================================================
-# DATABASE DEPENDENCY
-# ============================================================
-
+# Dependency for FastAPI routes
 def get_db():
-
     db = SessionLocal()
-
     try:
         yield db
-
     finally:
         db.close()

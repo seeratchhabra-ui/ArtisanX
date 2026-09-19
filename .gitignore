@@ -49,3 +49,5 @@ app.*.map.json
 
 # Uploaded product/media files
 uploads/
+.env
+*.db

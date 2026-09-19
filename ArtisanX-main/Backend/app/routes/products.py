@@ -36,32 +36,13 @@ def create_product(
 ):
 
     # Only authenticated users can create products
-
-    # Check whether seller/user exists
-    seller = db.query(User).filter(
-        User.id == product.seller_id
-    ).first()
-
-    if not seller:
-        raise HTTPException(
-            status_code=404,
-            detail="Seller/User not found"
-        )
-
-    # Make sure the logged-in user is the seller
-    if seller.id != current_user.id:
-        raise HTTPException(
-            status_code=403,
-            detail="You can only create products for your own account"
-        )
-
     new_product = Product(
         name=product.name,
         description=product.description,
         price=product.price,
         category=product.category,
         stock=product.stock,
-        state=product.state,
+        state=product.state or "Rajasthan",
         seller_id=current_user.id
     )
 
