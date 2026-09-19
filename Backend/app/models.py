@@ -262,6 +262,51 @@ class Product(Base):
         cascade="all, delete-orphan"
     )
 
+    @property
+    def seller_name(self) -> str:
+        if self.seller:
+            return self.seller.name
+        return "Asha Devi"
+
+    @property
+    def seller_location(self) -> str:
+        return self.state or "Jaipur, Rajasthan"
+
+    @property
+    def image_url(self) -> str:
+        if self.media:
+            for m in self.media:
+                if m.is_primary:
+                    return f"/uploads/{m.stored_filename}"
+            if len(self.media) > 0:
+                return f"/uploads/{self.media[0].stored_filename}"
+        if self.category == "Baskets":
+            return "https://images.unsplash.com/photo-1584589167171-541ce45f1eea?w=800&q=80"
+        return "https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=800&q=80"
+
+    @property
+    def tags(self) -> list:
+        cat = self.category.lower() if self.category else "craft"
+        return [f"#{cat}", "#handmade", "#kalasetu"]
+
+    @property
+    def material(self) -> str:
+        if self.category == "Baskets":
+            return "Moonj Grass"
+        return "Terracotta Clay"
+
+    @property
+    def made_in(self) -> str:
+        return f"{self.state or 'Rajasthan'}, India"
+
+    @property
+    def rating(self) -> float:
+        return 4.9
+
+    @property
+    def review_count(self) -> int:
+        return 18
+
 
 # ============================================================
 # 5. PRODUCT MEDIA
@@ -417,3 +462,19 @@ class Order(Base):
         "Product",
         back_populates="orders"
     )
+
+    @property
+    def product_name(self) -> str:
+        if self.product:
+            return self.product.name
+        return "Indigo Glaze Serving Bowl"
+
+    @property
+    def artisan_name(self) -> str:
+        if self.product and self.product.seller:
+            return self.product.seller.name
+        return "Asha Devi"
+
+    @property
+    def order_code(self) -> str:
+        return f"#AX{1040 + (self.id or 1)}"

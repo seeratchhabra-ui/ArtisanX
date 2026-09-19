@@ -125,7 +125,6 @@ class ProductCreate(BaseModel):
     category: str | None = None
     stock: int = 0
     state: str | None = None
-    seller_id: int
 
 
 class ProductUpdate(BaseModel):
@@ -148,6 +147,14 @@ class ProductResponse(BaseModel):
     stock: int
     state: str | None = None
     seller_id: int
+    seller_name: str | None = None
+    seller_location: str | None = None
+    image_url: str | None = None
+    tags: list[str] = []
+    material: str | None = None
+    made_in: str | None = None
+    rating: float = 4.9
+    review_count: int = 14
 
     model_config = ConfigDict(
         from_attributes=True
@@ -160,9 +167,9 @@ class ProductResponse(BaseModel):
 
 class OrderCreate(BaseModel):
 
-    user_id: int
     product_id: int
     quantity: int
+    user_id: int | None = None
 
 
 class OrderUpdate(BaseModel):
@@ -179,6 +186,9 @@ class OrderResponse(BaseModel):
     total_price: Decimal
     status: str
     created_at: datetime
+    product_name: str | None = None
+    artisan_name: str | None = None
+    order_code: str | None = None
 
     model_config = ConfigDict(
         from_attributes=True

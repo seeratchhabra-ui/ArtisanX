@@ -36,10 +36,9 @@ def create_order(
 ):
 
     # --------------------------------------------------------
-    # Make sure order belongs to logged-in user
+    # Ensure order belongs to logged-in user
     # --------------------------------------------------------
-
-    if order.user_id != current_user.id:
+    if order.user_id is not None and order.user_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="You can only create orders for your own account"
@@ -108,7 +107,7 @@ def create_order(
         product_id=order.product_id,
         quantity=order.quantity,
         total_price=total_price,
-        status="pending"
+        status="processing"
     )
 
     # --------------------------------------------------------
@@ -142,11 +141,16 @@ def get_orders(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    # Only return orders belonging to logged-in user
-    return db.query(Order).filter(
-        Order.user_id == current_user.id
-    ).all()
+    if current_user.role == "artisan":
+        # Artisans see orders received for their products
+        return db.query(Order).join(Product).filter(
+            Product.seller_id == current_user.id
+        ).order_by(Order.created_at.desc()).all()
+    else:
+        # Customers see orders they placed
+        return db.query(Order).filter(
+            Order.user_id == current_user.id
+        ).order_by(Order.created_at.desc()).all()
 
 
 # ============================================================

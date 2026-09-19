@@ -1,1 +1,37 @@
+# KalaSetu AI & Cloud Service Integrations Overview
 
+This document summarizes all external API integrations configured in KalaSetu.
+Keys are configured in `Backend/.env` (see `Backend/API_KEYS_GUIDE.md` for full step-by-step instructions).
+
+## Integrated Services Status & Endpoints:
+
+1. **Google Gemini LLM (Google AI Studio)**
+   - API: `https://generativelanguage.googleapis.com/v1beta`
+   - Config Key: `GEMINI_API_KEY` (in `Backend/.env`)
+   - Backend Endpoint: `POST /api/ai/digitize-product`, `POST /api/ai/chat`
+   - Capabilities: Product title generation, storytelling descriptions, craft tags, pricing recommendation, KalaSathi conversational AI.
+
+2. **Google Cloud Vision API**
+   - API: `https://vision.googleapis.com/v1/images:annotate`
+   - Config Key: `GOOGLE_CLOUD_VISION_API_KEY` (in `Backend/.env`)
+   - Backend Endpoint: `POST /api/ai/vision-analyze`
+   - Capabilities: Label detection, craft material identification, dominant color palette, object recognition.
+
+3. **Razorpay Payment Gateway (Indian Payments)**
+   - API: `https://api.razorpay.com/v1`
+   - Config Keys: `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` (in `Backend/.env`)
+   - Backend Endpoints: `POST /api/payments/create-order`, `POST /api/payments/verify`
+   - Capabilities: UPI (GPay, PhonePe, Paytm, BHIM QR), RuPay/Visa/Mastercard debit and credit cards, Netbanking.
+
+4. **Bhashini ULCA (Government of India Multilingual AI)**
+   - API: Bhashini ULCA Compute Pipeline
+   - Config Keys: `BHASHINI_USER_ID`, `BHASHINI_API_KEY`, `BHASHINI_PIPELINE_ID`
+   - Backend Endpoints: `POST /api/ai/bhashini/asr`, `POST /api/ai/bhashini/translate`, `POST /api/ai/bhashini/tts`
+   - Capabilities: Indian language voice-to-text (Hindi, Tamil, Telugu, etc.), translation, text-to-speech for accessibility.
+
+5. **SMS OTP Gateway (Fast2SMS / Twilio)**
+   - Config Keys: `FAST2SMS_API_KEY` or `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN`
+   - Backend Endpoints: `POST /api/auth/request-otp`, `POST /api/auth/login`
+   - Capabilities: Real SMS verification code dispatch to mobile phone numbers.
+
+*All services feature seamless local fallback when keys are not yet provided.*
