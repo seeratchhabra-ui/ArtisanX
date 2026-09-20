@@ -37,27 +37,104 @@ class ProductModel {
     this.reviewCount = 28,
   });
 
+  // Safely converts backend values that may arrive as:
+  // - int
+  // - double
+  // - String
+  static double _toDouble(dynamic value, {double fallback = 0.0}) {
+    if (value == null) {
+      return fallback;
+    }
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value.toString()) ?? fallback;
+  }
+
+  static int _toInt(dynamic value, {int fallback = 0}) {
+    if (value == null) {
+      return fallback;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value.toString()) ?? fallback;
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      description: json['description'] ?? '',
-      price: (json['price'] as num?)?.toDouble() ?? 0.0,
-      category: json['category'] ?? 'Craft',
-      stock: json['stock'] ?? 10,
-      state: json['state'] ?? 'Rajasthan',
-      sellerId: json['seller_id'] ?? 1,
-      sellerName: json['seller_name'] ?? 'Asha Devi',
-      sellerTitle: json['seller_title'] ?? 'Master Potter',
-      sellerLocation: json['seller_location'] ?? 'Jaipur',
-      imageUrl: json['image_url'] ?? '',
-      tags:
-          (json['tags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ??
-          [],
-      material: json['material'] ?? 'Terracotta',
-      madeIn: json['made_in'] ?? 'Jaipur, Rajasthan',
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.9,
-      reviewCount: json['review_count'] ?? 14,
+      id: _toInt(json['id']),
+
+      name: json['name']?.toString() ?? '',
+
+      description: json['description']?.toString() ?? '',
+
+      // Handles both:
+      // "1499.00"
+      // 1499
+      // 1499.00
+      price: _toDouble(
+        json['price'],
+        fallback: 0.0,
+      ),
+
+      category: json['category']?.toString() ?? 'Craft',
+
+      stock: _toInt(
+        json['stock'],
+        fallback: 10,
+      ),
+
+      state: json['state']?.toString() ?? 'Rajasthan',
+
+      sellerId: _toInt(
+        json['seller_id'],
+        fallback: 1,
+      ),
+
+      sellerName:
+          json['seller_name']?.toString() ?? 'Artisan',
+
+      sellerTitle:
+          json['seller_title']?.toString() ?? 'Master Potter',
+
+      sellerLocation:
+          json['seller_location']?.toString() ?? 'Jaipur',
+
+      imageUrl:
+          json['image_url']?.toString() ?? '',
+
+      tags: json['tags'] is List
+          ? (json['tags'] as List)
+              .map((e) => e.toString())
+              .toList()
+          : [],
+
+      material:
+          json['material']?.toString() ?? 'Terracotta',
+
+      madeIn:
+          json['made_in']?.toString() ??
+              'Jaipur, Rajasthan',
+
+      // Handles both numbers and numeric strings.
+      rating: _toDouble(
+        json['rating'],
+        fallback: 4.9,
+      ),
+
+      reviewCount: _toInt(
+        json['review_count'],
+        fallback: 14,
+      ),
     );
   }
 

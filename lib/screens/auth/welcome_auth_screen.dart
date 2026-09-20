@@ -23,16 +23,30 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
   final TextEditingController _phoneController = TextEditingController(
     text: '98765 43210',
   );
+
   final TextEditingController _otpController = TextEditingController(
     text: '123456',
   );
 
   bool _isLoading = false;
   bool _isSendingOtp = false;
+
   bool _isPehchanVerified = false;
   String? _pehchanIdCode;
   String? _pehchanDocUrl;
   bool _isVerifyingPehchan = false;
+
+  // ============================================================
+  // LOCAL UI ROLE SELECTION
+  // ============================================================
+  //
+  // IMPORTANT:
+  // This is ONLY used to control the UI before login.
+  //
+  // It is NOT used to determine the authenticated user's role.
+  //
+  // After login, the backend's user.role is authoritative.
+  UserRoleType _selectedRole = UserRoleType.artisan;
 
   @override
   void dispose() {
@@ -41,8 +55,13 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
     super.dispose();
   }
 
+  // ============================================================
+  // SEND OTP
+  // ============================================================
+
   void _handleSendOtp() async {
     final phoneText = _phoneController.text.trim();
+
     if (phoneText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -55,30 +74,59 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
     setState(() => _isSendingOtp = true);
 
-    final phone = '+91 $phoneText';
-    final res = await ApiService.requestOtp(phone);
-    final otpCode = res['debug_otp']?.toString() ?? '123456';
-    final isSms = res['sms_sent'] == true;
+    try {
+      final phone = '+91 $phoneText';
 
-    if (!mounted) return;
+      final res = await ApiService.requestOtp(phone);
 
-    setState(() {
-      _isSendingOtp = false;
-      _otpController.text = otpCode;
-    });
+      final otpCode = res['debug_otp']?.toString();
+      final isSms = res['sms_sent'] == true;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isSms
-              ? 'SMS OTP dispatched to $phone via ${res["provider"]}! Code: $otpCode'
-              : 'OTP sent to $phone: $otpCode (Auto-filled)',
+      if (!mounted) return;
+
+      setState(() {
+        _isSendingOtp = false;
+
+        // Only auto-fill if backend actually provided
+        // a debug OTP.
+        if (otpCode != null && otpCode.isNotEmpty) {
+          _otpController.text = otpCode;
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isSms
+                ? 'SMS OTP dispatched to $phone via ${res["provider"] ?? "SMS provider"}'
+                : otpCode != null
+                    ? 'OTP sent to $phone: $otpCode'
+                    : 'OTP sent to $phone',
+          ),
+          backgroundColor: AppTheme.forestGreen,
+          duration: const Duration(seconds: 4),
         ),
-        backgroundColor: AppTheme.forestGreen,
-        duration: const Duration(seconds: 4),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() => _isSendingOtp = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Unable to send OTP: ${e.toString()}',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
+
+  // ============================================================
+  // PEHCHAN ID
+  // ============================================================
 
   void _handleScanPehchanId() async {
     final result = await CameraPickerService.pickOrCaptureImage(
@@ -97,63 +145,103 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Document captured (${result.sourceDescription ?? "Card"}). Verifying with Ministry of Textiles...',
+          'Document captured (${result.sourceDescription ?? "Card"}). '
+          'Verifying with Ministry of Textiles...',
         ),
         backgroundColor: AppTheme.forestGreen,
         duration: const Duration(seconds: 2),
       ),
     );
 
-    // Call backend Pehchan ID verification
-    final verifyRes = await ApiService.verifyPehchanId(
-      documentUrl: result.imageUrl,
-      pehchanId: result.documentId ?? 'ID-ART-8821',
-      artisanName: 'Asha Devi',
-      phone: '+91 ${_phoneController.text.trim()}',
-    );
+    try {
+      final verifyRes = await ApiService.verifyPehchanId(
+        documentUrl: result.imageUrl,
+        pehchanId: result.documentId ?? 'ID-ART-8821',
+        artisanName: 'Asha Devi',
+        phone: '+91 ${_phoneController.text.trim()}',
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isVerifyingPehchan = false;
-      _isPehchanVerified = true;
-      _pehchanIdCode = verifyRes['pehchan_id'] ?? 'ID-ART-8821';
-    });
+      setState(() {
+        _isVerifyingPehchan = false;
+        _isPehchanVerified = true;
+        _pehchanIdCode =
+            verifyRes['pehchan_id']?.toString() ?? 'ID-ART-8821';
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.verified, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Pehchan Card ($_pehchanIdCode) Verified! Craft: Traditional Pottery',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(
+                Icons.verified,
+                color: Colors.white,
+                size: 20,
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Pehchan Card ($_pehchanIdCode) Verified! '
+                  'Craft: Traditional Pottery',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: AppTheme.forestGreen,
+          duration: const Duration(seconds: 3),
         ),
-        backgroundColor: AppTheme.forestGreen,
-        duration: const Duration(seconds: 3),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isVerifyingPehchan = false;
+        _isPehchanVerified = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Pehchan ID verification failed: ${e.toString()}',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
+
+  // ============================================================
+  // VOICE HELP
+  // ============================================================
 
   void _handleVoiceHelp() async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Bhashini Voice Assistant: Listening... Speak your mobile number.'),
+        content: Text(
+          'Bhashini Voice Assistant: Listening... '
+          'Speak your mobile number.',
+        ),
         backgroundColor: AppTheme.forestGreen,
         duration: Duration(seconds: 2),
       ),
     );
 
-    final transcript = await AiSimulationService.transcribeVoice(languageCode: 'hi');
+    final transcript =
+        await AiSimulationService.transcribeVoice(
+      languageCode: 'hi',
+    );
+
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Bhashini Recognized: $transcript'),
+          content: Text(
+            'Bhashini Recognized: $transcript',
+          ),
           backgroundColor: AppTheme.forestGreen,
           duration: const Duration(seconds: 3),
         ),
@@ -161,52 +249,157 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
     }
   }
 
-  void _handleContinue() async {
-    final appState = Provider.of<AppState>(context, listen: false);
+  // ============================================================
+  // CONTINUE / LOGIN
+  // ============================================================
+
+  Future<void> _handleContinue() async {
+    final phone = '+91 ${_phoneController.text.trim()}';
+    final otp = _otpController.text.trim();
+
+    if (_phoneController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your mobile number'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (otp.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter the OTP'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
-    await appState.loginWithOtp(
-      '+91 ${_phoneController.text.trim()}',
-      _otpController.text.trim(),
+    final appState = Provider.of<AppState>(
+      context,
+      listen: false,
+    );
+
+    // ==========================================================
+    // IMPORTANT:
+    //
+    // We DO NOT send _selectedRole to the backend.
+    //
+    // The backend determines the user's actual role.
+    // ==========================================================
+
+    final loginSuccessful = await appState.loginWithOtp(
+      phone,
+      otp,
     );
 
     if (!mounted) return;
+
     setState(() => _isLoading = false);
 
-    if (appState.isArtisan) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const ArtisanDashboardScreen()),
+    // ==========================================================
+    // LOGIN FAILED
+    // ==========================================================
+
+    if (!loginSuccessful) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            appState.authError ?? 'Login failed. Please try again.',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
       );
-    } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => const CustomerHomeScreen()),
+
+      return;
+    }
+
+    // ==========================================================
+    // BACKEND ROLE IS NOW AUTHORITATIVE
+    // ==========================================================
+
+    final user = appState.currentUser;
+
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Login succeeded but no user information was returned.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
       );
+
+      return;
+    }
+
+    // ==========================================================
+    // NAVIGATE USING BACKEND USER ROLE
+    // ==========================================================
+
+    switch (user.role) {
+      case UserRoleType.artisan:
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) =>
+                const ArtisanDashboardScreen(),
+          ),
+        );
+        break;
+
+      case UserRoleType.customer:
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) =>
+                const CustomerHomeScreen(),
+          ),
+        );
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
-    final isArtisanSelected = appState.currentRole == UserRoleType.artisan;
+    // IMPORTANT:
+    //
+    // We no longer read currentRole from AppState for the
+    // pre-login role-selection UI.
+    //
+    // AppState.currentRole is now the backend-authenticated role.
+    final isArtisanSelected =
+        _selectedRole == UserRoleType.artisan;
 
     return Scaffold(
       body: DecorativeBackground(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 28,
+            vertical: 20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               const SizedBox(height: 16),
 
-              // Top row with Accessible Speaker Button
+              // ==================================================
+              // TOP ROW / ACCESSIBILITY
+              // ==================================================
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   AccessibleSpeakerButton(
                     textToRead:
-                        'कलासेतु में आपका स्वागत है। कारीगर या ग्राहक चुनें, अपना मोबाइल नंबर दर्ज करें और ओटीपी के माध्यम से सुरक्षित लॉगिन करें।',
-                    tooltip: 'Listen to welcome instructions via Bhashini',
+                        'कलासेतु में आपका स्वागत है। '
+                        'कारीगर या ग्राहक चुनें, अपना मोबाइल नंबर दर्ज करें '
+                        'और ओटीपी के माध्यम से सुरक्षित लॉगिन करें।',
+                    tooltip:
+                        'Listen to welcome instructions via Bhashini',
                     size: 38,
                     glowColor: AppTheme.terracotta,
                   ),
@@ -215,7 +408,10 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 10),
 
-              // Logo: Terracotta Pot in rounded container
+              // ==================================================
+              // LOGO
+              // ==================================================
+
               Container(
                 width: 72,
                 height: 72,
@@ -224,7 +420,9 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                   borderRadius: BorderRadius.circular(22),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.terracotta.withValues(alpha: 0.3),
+                      color: AppTheme.terracotta.withValues(
+                        alpha: 0.3,
+                      ),
                       blurRadius: 16,
                       offset: const Offset(0, 6),
                     ),
@@ -232,7 +430,7 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                 ),
                 child: const Center(
                   child: Icon(
-                    Icons.soup_kitchen, // Decorative handicraft vase silhouette
+                    Icons.soup_kitchen,
                     color: Colors.white,
                     size: 38,
                   ),
@@ -241,7 +439,10 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 18),
 
-              // Brand Title
+              // ==================================================
+              // BRAND
+              // ==================================================
+
               const Text(
                 'Kalasetu',
                 style: TextStyle(
@@ -254,7 +455,6 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 6),
 
-              // Tagline
               const Text(
                 'Crafted by hands. Discovered by hearts.',
                 style: TextStyle(
@@ -266,7 +466,10 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 32),
 
-              // "I'm joining as"
+              // ==================================================
+              // ROLE SELECTION
+              // ==================================================
+
               const Text(
                 "I'm joining as",
                 style: TextStyle(
@@ -278,31 +481,45 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 16),
 
-              // Big Circular Role Selection Cards (Artisan vs Customer)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // ARTISAN BUTTON
+                  // ARTISAN
                   _buildRoleCircle(
                     title: 'ARTISAN',
                     icon: Icons.gavel_rounded,
                     isSelected: isArtisanSelected,
-                    onTap: () => appState.setRole(UserRoleType.artisan),
+                    onTap: () {
+                      setState(() {
+                        _selectedRole =
+                            UserRoleType.artisan;
+                      });
+                    },
                   ),
+
                   const SizedBox(width: 24),
-                  // CUSTOMER BUTTON
+
+                  // CUSTOMER
                   _buildRoleCircle(
                     title: 'CUSTOMER',
                     icon: Icons.shopping_cart_outlined,
                     isSelected: !isArtisanSelected,
-                    onTap: () => appState.setRole(UserRoleType.customer),
+                    onTap: () {
+                      setState(() {
+                        _selectedRole =
+                            UserRoleType.customer;
+                      });
+                    },
                   ),
                 ],
               ),
 
               const SizedBox(height: 28),
 
-              // Artisan Pehchan ID Document Verification Card (When Artisan selected)
+              // ==================================================
+              // PEHCHAN ID
+              // ==================================================
+
               if (isArtisanSelected) ...[
                 Container(
                   width: double.infinity,
@@ -320,10 +537,12 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                     ),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
                         children: [
                           Row(
                             children: [
@@ -348,7 +567,8 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                             ],
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(
+                            padding:
+                                const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 3,
                             ),
@@ -356,10 +576,13 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                               color: _isPehchanVerified
                                   ? AppTheme.forestGreen
                                   : AppTheme.terracotta,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius:
+                                  BorderRadius.circular(8),
                             ),
                             child: Text(
-                              _isPehchanVerified ? 'VERIFIED' : 'REQUIRED',
+                              _isPehchanVerified
+                                  ? 'VERIFIED'
+                                  : 'REQUIRED',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -370,11 +593,17 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 8),
+
                       Text(
                         _isPehchanVerified
-                            ? 'Identity verified: ${_pehchanIdCode ?? "ID-ART-8821"} (Ministry of Textiles, DC Handicrafts)'
-                            : 'Upload your Govt. of India Pehchan Artisan Card or Aadhaar for priority digital verification.',
+                            ? 'Identity verified: '
+                                '${_pehchanIdCode ?? "ID-ART-8821"} '
+                                '(Ministry of Textiles, DC Handicrafts)'
+                            : 'Upload your Govt. of India Pehchan '
+                                'Artisan Card or Aadhaar for priority '
+                                'digital verification.',
                         style: TextStyle(
                           fontSize: 12,
                           color: _isPehchanVerified
@@ -383,55 +612,77 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                           height: 1.3,
                         ),
                       ),
-                      if (_isPehchanVerified && _pehchanDocUrl != null) ...[
+
+                      if (_isPehchanVerified &&
+                          _pehchanDocUrl != null) ...[
                         const SizedBox(height: 8),
+
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius:
+                              BorderRadius.circular(8),
                           child: Image.network(
-                            ApiService.resolveImageUrl(_pehchanDocUrl),
+                            ApiService.resolveImageUrl(
+                              _pehchanDocUrl,
+                            ),
                             height: 50,
                             width: 80,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, trace) => const SizedBox(),
+                            errorBuilder:
+                                (context, error, trace) =>
+                                    const SizedBox(),
                           ),
                         ),
                       ],
+
                       const SizedBox(height: 12),
+
                       SizedBox(
                         width: double.infinity,
                         height: 42,
                         child: OutlinedButton.icon(
-                          onPressed: _isVerifyingPehchan ? null : _handleScanPehchanId,
+                          onPressed: _isVerifyingPehchan
+                              ? null
+                              : _handleScanPehchanId,
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _isPehchanVerified
-                                ? AppTheme.forestGreen
-                                : AppTheme.terracotta,
+                            foregroundColor:
+                                _isPehchanVerified
+                                    ? AppTheme.forestGreen
+                                    : AppTheme.terracotta,
                             side: BorderSide(
                               color: _isPehchanVerified
                                   ? AppTheme.forestGreen
                                   : AppTheme.terracotta,
                               width: 1.2,
                             ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(12),
                             ),
                           ),
                           icon: _isVerifyingPehchan
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : Icon(
                                   _isPehchanVerified
-                                      ? Icons.check_circle_outline
-                                      : Icons.camera_alt_outlined,
+                                      ? Icons
+                                          .check_circle_outline
+                                      : Icons
+                                          .camera_alt_outlined,
                                   size: 18,
                                 ),
                           label: Text(
                             _isPehchanVerified
-                                ? 'Pehchan ID Verified • Tap to re-scan'
-                                : 'Tap to scan Pehchan ID with Camera',
+                                ? 'Pehchan ID Verified • '
+                                    'Tap to re-scan'
+                                : 'Tap to scan Pehchan ID '
+                                    'with Camera',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -442,15 +693,21 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 20),
               ],
 
-              // Mobile Number Input Field with "Send OTP" Button
+              // ==================================================
+              // MOBILE NUMBER
+              // ==================================================
+
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment:
+                        MainAxisAlignment.spaceBetween,
                     children: [
                       const Text(
                         'Mobile number',
@@ -464,14 +721,19 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                         onTap: _handleVoiceHelp,
                         child: const Row(
                           children: [
-                            Icon(Icons.mic, size: 14, color: AppTheme.forestGreen),
+                            Icon(
+                              Icons.mic,
+                              size: 14,
+                              color: AppTheme.forestGreen,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Speak (Bhashini)',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: AppTheme.forestGreen,
+                                color:
+                                    AppTheme.forestGreen,
                               ),
                             ),
                           ],
@@ -479,17 +741,23 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 8),
+
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius:
+                          BorderRadius.circular(16),
                       border: Border.all(
                         color: AppTheme.borderLight,
                         width: 1.2,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    padding:
+                        const EdgeInsets.symmetric(
+                      horizontal: 14,
+                    ),
                     child: Row(
                       children: [
                         const Icon(
@@ -497,7 +765,9 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                           color: AppTheme.textMuted,
                           size: 20,
                         ),
+
                         const SizedBox(width: 10),
+
                         const Text(
                           '+91 ',
                           style: TextStyle(
@@ -506,45 +776,62 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                             color: AppTheme.textDark,
                           ),
                         ),
+
                         Expanded(
                           child: TextField(
                             controller: _phoneController,
-                            keyboardType: TextInputType.phone,
+                            keyboardType:
+                                TextInputType.phone,
                             style: const TextStyle(
                               fontSize: 15,
                               color: AppTheme.textDark,
                               fontWeight: FontWeight.w500,
                             ),
-                            decoration: const InputDecoration(
+                            decoration:
+                                const InputDecoration(
                               hintText: '98765 43210',
                               border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
+                              enabledBorder:
+                                  InputBorder.none,
+                              focusedBorder:
+                                  InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.symmetric(
                                 vertical: 14,
                               ),
                             ),
                           ),
                         ),
-                        // Dedicated "Send OTP" Button
+
                         SizedBox(
                           height: 36,
                           child: ElevatedButton(
-                            onPressed: _isSendingOtp ? null : _handleSendOtp,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.terracotta,
-                              foregroundColor: Colors.white,
+                            onPressed: _isSendingOtp
+                                ? null
+                                : _handleSendOtp,
+                            style:
+                                ElevatedButton.styleFrom(
+                              backgroundColor:
+                                  AppTheme.terracotta,
+                              foregroundColor:
+                                  Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: 14,
+                              ),
+                              shape:
+                                  RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(10),
                               ),
                             ),
                             child: _isSendingOtp
                                 ? const SizedBox(
                                     width: 14,
                                     height: 14,
-                                    child: CircularProgressIndicator(
+                                    child:
+                                        CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white,
                                     ),
@@ -553,7 +840,8 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                                     'Send OTP',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                                      fontWeight:
+                                          FontWeight.bold,
                                     ),
                                   ),
                           ),
@@ -566,9 +854,13 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 18),
 
-              // One-Time Password (OTP) Input Field
+              // ==================================================
+              // OTP
+              // ==================================================
+
               Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment:
+                    CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'One-time password',
@@ -578,17 +870,23 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                       color: AppTheme.textDark,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius:
+                          BorderRadius.circular(16),
                       border: Border.all(
                         color: AppTheme.borderLight,
                         width: 1.2,
                       ),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(
+                      horizontal: 16,
+                    ),
                     child: Row(
                       children: [
                         const Icon(
@@ -596,31 +894,40 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                           color: AppTheme.textMuted,
                           size: 20,
                         ),
+
                         const SizedBox(width: 12),
+
                         Expanded(
                           child: TextField(
                             controller: _otpController,
-                            obscureText: false,
-                            keyboardType: TextInputType.number,
+                            keyboardType:
+                                TextInputType.number,
                             style: const TextStyle(
                               fontSize: 16,
                               letterSpacing: 4.0,
                               color: AppTheme.textDark,
                               fontWeight: FontWeight.bold,
                             ),
-                            decoration: const InputDecoration(
+                            decoration:
+                                const InputDecoration(
                               hintText: '••••••',
                               border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
+                              enabledBorder:
+                                  InputBorder.none,
+                              focusedBorder:
+                                  InputBorder.none,
+                              contentPadding:
+                                  EdgeInsets.symmetric(
                                 vertical: 14,
                               ),
                             ),
                           ),
                         ),
+
                         TextButton(
-                          onPressed: _isSendingOtp ? null : _handleSendOtp,
+                          onPressed: _isSendingOtp
+                              ? null
+                              : _handleSendOtp,
                           child: const Text(
                             'Resend',
                             style: TextStyle(
@@ -638,17 +945,23 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 28),
 
-              // Primary "Continue securely" button
+              // ==================================================
+              // CONTINUE
+              // ==================================================
+
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleContinue,
+                  onPressed:
+                      _isLoading ? null : _handleContinue,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.terracotta,
+                    backgroundColor:
+                        AppTheme.terracotta,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius:
+                          BorderRadius.circular(16),
                     ),
                     elevation: 1,
                   ),
@@ -656,7 +969,8 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
                       ? const SizedBox(
                           width: 22,
                           height: 22,
-                          child: CircularProgressIndicator(
+                          child:
+                              CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2.2,
                           ),
@@ -674,10 +988,12 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
 
               const SizedBox(height: 22),
 
-              // Terms & Privacy Policy footer
               const Text(
                 'By continuing, you agree to our Terms & Privacy Policy',
-                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textMuted,
+                ),
                 textAlign: TextAlign.center,
               ),
 
@@ -688,6 +1004,10 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
       ),
     );
   }
+
+  // ============================================================
+  // ROLE CIRCLE
+  // ============================================================
 
   Widget _buildRoleCircle({
     required String title,
@@ -702,39 +1022,54 @@ class _WelcomeAuthScreenState extends State<WelcomeAuthScreen> {
         width: 110,
         height: 110,
         decoration: BoxDecoration(
-          color: isSelected ? AppTheme.terracotta : Colors.white,
+          color: isSelected
+              ? AppTheme.terracotta
+              : Colors.white,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected ? AppTheme.terracotta : AppTheme.borderLight,
+            color: isSelected
+                ? AppTheme.terracotta
+                : AppTheme.borderLight,
             width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? AppTheme.terracotta.withValues(alpha: 0.35)
-                  : Colors.black.withValues(alpha: 0.04),
+                  ? AppTheme.terracotta.withValues(
+                      alpha: 0.35,
+                    )
+                  : Colors.black.withValues(
+                      alpha: 0.04,
+                    ),
               blurRadius: 14,
               offset: const Offset(0, 5),
             ),
           ],
         ),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+              MainAxisAlignment.center,
           children: [
             Text(
               title,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: isSelected ? Colors.white : AppTheme.textDark,
+                color: isSelected
+                    ? Colors.white
+                    : AppTheme.textDark,
                 letterSpacing: 0.5,
               ),
             ),
+
             const SizedBox(height: 8),
+
             Icon(
               icon,
               size: 28,
-              color: isSelected ? Colors.white : AppTheme.textDark,
+              color: isSelected
+                  ? Colors.white
+                  : AppTheme.textDark,
             ),
           ],
         ),

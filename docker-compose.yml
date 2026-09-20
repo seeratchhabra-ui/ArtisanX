@@ -56,9 +56,6 @@ services:
       postgres:
         condition: service_healthy
 
-    volumes:
-      - ./backend:/app
-
 
 # ============================================================
 # VOLUMES

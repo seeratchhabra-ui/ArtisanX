@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../services/api_service.dart';
 import '../../services/camera_picker_service.dart';
 import '../../theme/app_theme.dart';
-import '../../models/user_model.dart';
 import '../../providers/app_state.dart';
 import '../../widgets/decorative_background.dart';
 import '../../widgets/status_badge.dart';
@@ -18,7 +17,8 @@ class ArtisanDashboardScreen extends StatefulWidget {
   const ArtisanDashboardScreen({super.key});
 
   @override
-  State<ArtisanDashboardScreen> createState() => _ArtisanDashboardScreenState();
+  State<ArtisanDashboardScreen> createState() =>
+      _ArtisanDashboardScreenState();
 }
 
 class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
@@ -31,22 +31,26 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
     _loadLiveStats();
   }
 
-  void _loadLiveStats() async {
+  Future<void> _loadLiveStats() async {
     final stats = await ApiService.fetchArtisanStats();
+
     if (mounted && stats != null) {
-      setState(() => _liveStats = stats);
+      setState(() {
+        _liveStats = stats;
+      });
     }
   }
 
   void _onNavTap(int index) {
     setState(() => _navIndex = index);
+
     if (index == 2) {
-      // Add (+) button -> navigate to AI Product Upload
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const AiProductUploadScreen()),
+        MaterialPageRoute(
+          builder: (context) => const AiProductUploadScreen(),
+        ),
       );
     } else if (index == 4) {
-      // Profile / Switch to Customer store
       _showSwitchRoleDialog();
     }
   }
@@ -55,10 +59,16 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
       builder: (context) {
-        final appState = Provider.of<AppState>(context, listen: false);
+        final appState = Provider.of<AppState>(
+          context,
+          listen: false,
+        );
+
         return Container(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -71,7 +81,9 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                     backgroundColor: AppTheme.forestGreen,
                     child: const Text(
                       'A',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -79,14 +91,14 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        appState.currentUser?.name ?? 'Asha Devi',
+                        appState.currentUser?.name ?? 'Artisan',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const Text(
-                        'Master Potter • Sanganer, Jaipur',
+                        'Artisan Workshop',
                         style: TextStyle(
                           color: AppTheme.textMuted,
                           fontSize: 13,
@@ -97,68 +109,125 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                 ],
               ),
               const Divider(height: 32),
+
               ListTile(
                 leading: const Icon(
                   Icons.camera_alt_outlined,
                   color: AppTheme.forestGreen,
                 ),
-                title: const Text('Update Profile Picture'),
-                subtitle: const Text('Take photo with camera or choose from gallery'),
-                trailing: const Icon(Icons.chevron_right),
+                title: const Text(
+                  'Update Profile Picture',
+                ),
+                subtitle: const Text(
+                  'Take photo with camera or choose from gallery',
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                ),
                 onTap: () async {
                   Navigator.of(context).pop();
-                  final result = await CameraPickerService.pickOrCaptureImage(
+
+                  final result =
+                      await CameraPickerService.pickOrCaptureImage(
                     context,
                     title: 'Update Artisan Profile Photo',
                   );
+
                   if (result != null) {
-                    await ApiService.updateArtisanAvatar(result.imageUrl);
+                    final success =
+                        await ApiService.updateArtisanAvatar(
+                      result.imageUrl,
+                    );
+
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Profile photo updated successfully!'),
-                          backgroundColor: AppTheme.forestGreen,
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? 'Profile photo updated successfully!'
+                                : 'Unable to update profile photo.',
+                          ),
+                          backgroundColor: success
+                              ? AppTheme.forestGreen
+                              : Colors.red,
                         ),
                       );
                     }
                   }
                 },
               ),
+
               ListTile(
                 leading: const Icon(
                   Icons.storefront_outlined,
                   color: AppTheme.terracotta,
                 ),
-                title: const Text('Switch to Customer Marketplace'),
-                subtitle: const Text('Browse craft collections as a buyer'),
-                trailing: const Icon(Icons.chevron_right),
+                title: const Text(
+                  'Open Customer Marketplace',
+                ),
+                subtitle: const Text(
+                  'Browse craft collections as a buyer',
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                ),
                 onTap: () {
                   Navigator.of(context).pop();
-                  appState.setRole(UserRoleType.customer);
-                  Navigator.of(context).pushReplacement(
+
+                  /*
+                   * IMPORTANT:
+                   * We do NOT call appState.setRole() here.
+                   *
+                   * The authenticated backend role remains authoritative.
+                   *
+                   * This navigation only opens the marketplace UI.
+                   */
+                  Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) => const CustomerHomeScreen(),
+                      builder: (context) =>
+                          const CustomerHomeScreen(),
                     ),
                   );
                 },
               ),
+
               ListTile(
                 leading: const Icon(
                   Icons.language,
                   color: AppTheme.forestGreen,
                 ),
-                title: const Text('Bhashini Language: हिन्दी'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).pop(),
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
                 title: const Text(
-                  'Logout',
-                  style: TextStyle(color: Colors.red),
+                  'Bhashini Language: हिन्दी',
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
                 ),
                 onTap: () {
                   Navigator.of(context).pop();
+                },
+              ),
+
+              ListTile(
+                leading: const Icon(
+                  Icons.logout,
+                  color: Colors.red,
+                ),
+                title: const Text(
+                  'Logout',
+                  style: TextStyle(
+                    color: Colors.red,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+
+                  final appState = Provider.of<AppState>(
+                    context,
+                    listen: false,
+                  );
+
+                  appState.logout();
+
                   Navigator.of(context).pushReplacementNamed('/');
                 },
               ),
@@ -178,13 +247,15 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
       body: DecorativeBackground(
         child: Column(
           children: [
-            // Top App Bar matching Figma
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
+              ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                 children: [
-                  // Avatar 'A'
                   GestureDetector(
                     onTap: _showSwitchRoleDialog,
                     child: Container(
@@ -207,7 +278,6 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                     ),
                   ),
 
-                  // Title: My Workshop
                   const Text(
                     'My Workshop',
                     style: TextStyle(
@@ -217,13 +287,13 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                     ),
                   ),
 
-                  // Actions: Accessible Speaker Button + Notification Bell with Badge
                   Row(
                     children: [
                       AccessibleSpeakerButton(
                         textToRead:
-                            'नमस्ते आशा जी! आपके कुल ${appState.allProducts.length} उत्पाद हैं, ${orders.length} ऑर्डर मिले हैं और ₹42,800 की कमाई हुई है।',
-                        tooltip: 'Listen to workshop overview via Bhashini',
+                            'नमस्ते! आपके कुल ${appState.allProducts.length} उत्पाद हैं और ${orders.length} ऑर्डर मिले हैं।',
+                        tooltip:
+                            'Listen to workshop overview via Bhashini',
                         size: 38,
                         glowColor: AppTheme.forestGreen,
                       ),
@@ -237,12 +307,15 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                             ),
                             color: AppTheme.textDark,
                             onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(
                                 SnackBar(
                                   content: Text(
                                     'You have ${orders.length} orders in your workshop dashboard!',
                                   ),
-                                  duration: const Duration(milliseconds: 1500),
+                                  duration: const Duration(
+                                    milliseconds: 1500,
+                                  ),
                                 ),
                               );
                             },
@@ -253,7 +326,8 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                             child: Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
+                              decoration:
+                                  const BoxDecoration(
                                 color: AppTheme.terracotta,
                                 shape: BoxShape.circle,
                               ),
@@ -267,19 +341,20 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
               ),
             ),
 
-            // Main Scrollable Dashboard Content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                ),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 6),
 
-                    // Greeting
-                    const Text(
-                      'Namaste, Asha ji',
-                      style: TextStyle(
+                    Text(
+                      'Namaste, ${appState.currentUser?.name ?? 'Artisan'}',
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppTheme.forestGreen,
                         fontWeight: FontWeight.w500,
@@ -288,7 +363,6 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
 
                     const SizedBox(height: 4),
 
-                    // Heading: Your craft is growing!!
                     const Text(
                       'Your craft is growing!!',
                       style: TextStyle(
@@ -301,40 +375,45 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
 
                     const SizedBox(height: 18),
 
-                    // 3 Metric Cards Row (Total products, Orders, Earnings)
                     Row(
                       children: [
-                        // Card 1: Total products
                         Expanded(
                           child: _buildMetricCard(
-                            value: _liveStats?['total_products']?.toString() ??
+                            value: _liveStats?[
+                                      'total_products']
+                                  ?.toString() ??
                                 '${appState.allProducts.length}',
                             label: 'Total products',
                             icon: Icons.soup_kitchen_outlined,
-                            iconColor: AppTheme.terracotta,
+                            iconColor:
+                                AppTheme.terracotta,
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Card 2: Orders
                         Expanded(
                           child: _buildMetricCard(
-                            value: _liveStats?['total_orders']?.toString() ??
+                            value: _liveStats?[
+                                      'total_orders']
+                                  ?.toString() ??
                                 '${orders.length}',
                             label: 'Orders',
-                            icon: Icons.inventory_2_outlined,
-                            iconColor: AppTheme.forestGreen,
+                            icon:
+                                Icons.inventory_2_outlined,
+                            iconColor:
+                                AppTheme.forestGreen,
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Card 3: Earnings
                         Expanded(
                           child: _buildMetricCard(
                             value: _liveStats != null
                                 ? '₹${(_liveStats!['total_revenue'] as num).toStringAsFixed(0)}'
-                                : '₹42.8k',
+                                : '₹0',
                             label: 'Earnings',
-                            icon: Icons.currency_rupee,
-                            iconColor: AppTheme.mustardGold,
+                            icon:
+                                Icons.currency_rupee,
+                            iconColor:
+                                AppTheme.mustardGold,
                           ),
                         ),
                       ],
@@ -342,7 +421,6 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
 
                     const SizedBox(height: 20),
 
-                    // Primary Action Bar: [+ Add new product] (Clean CTA without speaker icon)
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -355,11 +433,16 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                             ),
                           );
                         },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.forestGreen,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(25),
+                        style:
+                            ElevatedButton.styleFrom(
+                          backgroundColor:
+                              AppTheme.forestGreen,
+                          foregroundColor:
+                              Colors.white,
+                          shape:
+                              RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(25),
                           ),
                           elevation: 1,
                         ),
@@ -371,7 +454,8 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
                           'Add new product',
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                            fontWeight:
+                                FontWeight.w600,
                           ),
                         ),
                       ),
@@ -379,35 +463,42 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
 
                     const SizedBox(height: 26),
 
-                    // Recent Orders Section Header
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
                           'Recent orders',
                           style: TextStyle(
                             fontSize: 17,
-                            fontWeight: FontWeight.w700,
+                            fontWeight:
+                                FontWeight.w700,
                             color: AppTheme.textDark,
                           ),
                         ),
                         TextButton(
                           onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                              SnackBar(
                                 content: Text(
-                                  'Showing all 18 fulfilled & pending orders',
+                                  'Showing ${orders.length} orders',
                                 ),
-                                duration: Duration(milliseconds: 1200),
+                                duration:
+                                    const Duration(
+                                  milliseconds: 1200,
+                                ),
                               ),
                             );
                           },
                           child: const Text(
                             'View all',
                             style: TextStyle(
-                              color: AppTheme.terracotta,
+                              color:
+                                  AppTheme.terracotta,
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                              fontWeight:
+                                  FontWeight.w600,
                             ),
                           ),
                         ),
@@ -416,62 +507,107 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
 
                     const SizedBox(height: 6),
 
-                    // Order Cards List
-                    ListView.separated(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: orders.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final order = orders[index];
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
+                    if (orders.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 32,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'No orders found.',
+                            style: TextStyle(
+                              color:
+                                  AppTheme.textMuted,
+                            ),
                           ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppTheme.borderLight),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.02),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                        ),
+                      )
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics:
+                            const NeverScrollableScrollPhysics(),
+                        itemCount: orders.length,
+                        separatorBuilder:
+                            (context, index) =>
+                                const SizedBox(height: 10),
+                        itemBuilder:
+                            (context, index) {
+                          final order = orders[index];
+
+                          return Container(
+                            padding:
+                                const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            decoration:
+                                BoxDecoration(
+                              color: Colors.white,
+                              borderRadius:
+                                  BorderRadius.circular(
+                                16,
                               ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    order.productName,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textDark,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    '${order.orderCode} • ₹${order.totalPrice.toStringAsFixed(0)}',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textMuted,
-                                    ),
-                                  ),
-                                ],
+                              border: Border.all(
+                                color:
+                                    AppTheme.borderLight,
                               ),
-                              StatusBadge(status: order.status),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withOpacity(0.02),
+                                  blurRadius: 8,
+                                  offset:
+                                      const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment
+                                      .spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment
+                                          .start,
+                                  children: [
+                                    Text(
+                                      order.productName,
+                                      style:
+                                          const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight:
+                                            FontWeight
+                                                .w600,
+                                        color:
+                                            AppTheme
+                                                .textDark,
+                                      ),
+                                    ),
+                                    const SizedBox(
+                                      height: 4,
+                                    ),
+                                    Text(
+                                      '${order.orderCode} • ₹${order.totalPrice.toStringAsFixed(0)}',
+                                      style:
+                                          const TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            AppTheme
+                                                .textMuted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                StatusBadge(
+                                  status: order.status,
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
 
                     const SizedBox(height: 16),
                   ],
@@ -479,12 +615,12 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
               ),
             ),
 
-            // Craft & AI Floating Action Buttons
             const CraftFloatingButtons(),
           ],
         ),
       ),
-      bottomNavigationBar: CustomBottomNavBar(
+      bottomNavigationBar:
+          CustomBottomNavBar(
         currentIndex: _navIndex,
         onTap: _onNavTap,
         isArtisan: true,
@@ -499,11 +635,16 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
     required Color iconColor,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 10),
+      padding: const EdgeInsets.symmetric(
+        vertical: 16,
+        horizontal: 10,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppTheme.borderLight),
+        border: Border.all(
+          color: AppTheme.borderLight,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.02),
@@ -514,7 +655,11 @@ class _ArtisanDashboardScreenState extends State<ArtisanDashboardScreen> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: iconColor, size: 24),
+          Icon(
+            icon,
+            color: iconColor,
+            size: 24,
+          ),
           const SizedBox(height: 8),
           Text(
             value,
