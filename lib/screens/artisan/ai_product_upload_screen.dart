@@ -9,6 +9,7 @@ import '../../services/api_service.dart';
 import '../../services/camera_picker_service.dart';
 import '../../widgets/decorative_background.dart';
 import '../../widgets/craft_floating_buttons.dart';
+import '../../widgets/accessible_speaker_button.dart';
 
 class AiProductUploadScreen extends StatefulWidget {
   const AiProductUploadScreen({super.key});
@@ -1035,7 +1036,18 @@ class _AiProductUploadScreenState extends State<AiProductUploadScreen> {
                     // ---------------------------------------------------------
                     // REVIEW & PUBLISH
                     // ---------------------------------------------------------
-
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                       AccessibleSpeakerButton(
+                        textToRead: 'समीक्षा करें और प्रकाशित करें। यह बटन दबाकर आपका उत्पाद बाज़ार में लाइव हो जाएगा।',
+                        tooltip: 'Listen: review and publish',
+                        size: 34,
+                        glowColor: AppTheme.forestGreen,
+                       ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -1073,8 +1085,8 @@ class _AiProductUploadScreenState extends State<AiProductUploadScreen> {
                                 ),
                               )
                             : const Icon(
-                                Icons.auto_awesome,
-                                size: 18,
+                                Icons.check_circle,
+                                size: 22,
                               ),
                         label: _isPublishing
                             ? const Text(
